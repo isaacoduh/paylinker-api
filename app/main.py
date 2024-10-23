@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from random import randrange
 from . import models
 from .database import engine, get_db
-from .router import auth
+from .router import auth, payment_links
 
 
 models.Base.metadata.create_all(bind=engine)
@@ -22,7 +22,7 @@ app.add_middleware(CORSMiddleware,
 )
 
 app.include_router(auth.router)
-
+app.include_router(payment_links.router)
 
 
 
