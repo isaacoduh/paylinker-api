@@ -1,2 +1,4 @@
 .idea/
 app/__pycache__/
+.env
+.plvenv/
