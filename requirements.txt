@@ -10,3 +10,4 @@ passlib==1.7.4
 psycopg2==2.9.9
 python-dotenv==1.0.1
 python-jose==3.3.0
+Jinja2==3.0.1

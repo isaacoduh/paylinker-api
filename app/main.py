@@ -1,12 +1,17 @@
-from fastapi import FastAPI, Body, status, HTTPException, Response
+from fastapi import FastAPI, Body, status, HTTPException, Response, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timedelta
 from random import randrange
 from . import models
 from .database import engine, get_db
-from .router import auth, payment_links
+from .router import auth, payment_links, payments
+import os
+import stripe
+from .config import settings
 
 
 models.Base.metadata.create_all(bind=engine)
@@ -20,9 +25,12 @@ app.add_middleware(CORSMiddleware,
                    allow_methods=["*"],
                    allow_headers=["*"]
 )
+templates = Jinja2Templates(directory="templates")
+stripe.api_key = settings.stripe_key
 
 app.include_router(auth.router)
 app.include_router(payment_links.router)
+app.include_router(payments.router)
 
 
 
@@ -81,6 +89,94 @@ def find_index_link(id: int):
         if link["id"] == id:
             return index
 
+
+@app.get("/success")
+async def success(request: Request):
+    return HTMLResponse("""
+        <html>
+            <head>
+                <title>Success</title>
+            </head>
+            <body>
+                <h1>Payment Successful!</h1>
+                <p>Your payment has been processed successfully.</p>
+            </body>
+        </html>
+    """)
+
+
+@app.get("/cancel")
+async def cancel(request: Request):
+    return HTMLResponse("""
+        <html>
+            <head>
+                <title>Payment Cancelled</title>
+            </head>
+            <body>
+                <h1>Payment Cancelled</h1>
+                <p>You have cancelled the payment process.</p>
+            </body>
+        </html>
+    """)
+
+# @app.post("/create-checkout-session")
+# async def create_checkout_session(request: Request):
+#     data = await request.json()
+
+#     if not app.state.stripe_customer_id:
+#         customer = stripe.Customer.create(
+#             description="Demo customer",
+#         )
+#         app.state.stripe_customer_id = customer["id"]
+
+#     checkout_session = stripe.checkout.Session.create(
+#         customer=app.state.stripe_customer_id,
+#         success_url="http://localhost:8000/success?session_id={CHECKOUT_SESSION_ID}",
+#         cancel_url="http://localhost:8000/cancel",
+#         payment_method_types=["card"],
+#         mode="subscription",
+#         line_items=[{
+#             "price": data["priceId"],
+#             "quantity": 1
+#         }],
+#     )
+#     return {"sessionId": checkout_session["id"]}
+
+
+# @app.post("/create-portal-session")
+# async def create_portal_session():
+#     session = stripe.billing_portal.Session.create(
+#         customer=app.state.stripe_customer_id,
+#         return_url="http://localhost:8000"
+#     )
+#     return {"url": session.url}
+
+
+@app.post("/webhook")
+async def webhook_received(request: Request, stripe_signature: str = Header(None)):
+    webhook_secret = settings.stripe_webhook_secret
+    data = await request.body()
+    try:
+        event = stripe.Webhook.construct_event(
+            payload=data,
+            sig_header=stripe_signature,
+            secret=webhook_secret
+        )
+        event_data = event['data']
+    except Exception as e:
+        return {"error": str(e)}
+
+    event_type = event['type']
+    if event_type == 'checkout.session.completed':
+        print('checkout session completed')
+    elif event_type == 'payment_intent.succeeded':
+        print('invoice paid')
+    elif event_type == 'invoice.payment_failed':
+        print('invoice payment failed')
+    else:
+        print(f'unhandled event: {event_type}')
+    
+    return {"status": "success"}
 
 @app.get('/')
 def root():

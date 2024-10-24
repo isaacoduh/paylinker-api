@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     algorithm: str
     access_token_expire_minutes: int
     client_url: str
+    stripe_key: str
+    stripe_webhook_secret: str
 
     model_config = SettingsConfigDict(env_file=".env")
 

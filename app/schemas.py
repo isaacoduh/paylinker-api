@@ -37,9 +37,22 @@ class PaymentLinkOut(BaseModel):
     user_id: int
     amount: float
     currency: str
+    link_code: str
     description: Optional[str]
     expiration_date: Optional[datetime]
     link_url: Optional[str]
+
+    class Config:
+        orm_mode = True
+
+class TransactionOut(BaseModel):
+    id: int
+    payment_link_id: int
+    transaction_id: str
+    status: str
+    payment_method: str
+    created_at: datetime
+    updated_at: datetime
 
     class Config:
         orm_mode = True
