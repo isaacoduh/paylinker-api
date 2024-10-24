@@ -1,4 +1,4 @@
-from fastapi import Body, Depends, FastAPI, Response, status, HTTPException, Depends, APIRouter
+from fastapi import Body, Depends, FastAPI, Response, status, HTTPException, Depends, APIRouter, Query
 from . import oauth2
 from .. import schemas
 from sqlalchemy.orm import Session
@@ -36,16 +36,23 @@ def create_payment_link(link: schemas.PaymentLinkCreate, db: Session = Depends(g
     db.refresh(new_link)
     return new_link
 
+# GET /links/?start_date=2024-01-01&end_date=2024-10-23&currency=USD&status=active
+
 @router.get("/", response_model=List[schemas.PaymentLinkOut])
-def get_payment_links(db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
-    links = db.query(models.PaymentLink).filter(models.PaymentLink.user_id == current_user.id).all()
+def get_payment_links(db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user), currency: str = Query(None, description="Filter By Currency e.g (USD)")):
+    query = db.query(models.PaymentLink).filter(models.PaymentLink.user_id == current_user.id)
+    if currency:
+        query = query.filter(models.PaymentLink.currency == currency)
+    
+    links = query.all()
     return links
 
 
 
 @router.get("/{id}", response_model=schemas.PaymentLinkOut)
-def get_payment_link(id: int, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
+def get_payment_link(id: int, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user), ):
     link = db.query(models.PaymentLink).filter(models.PaymentLink.id == id, models.PaymentLink.user_id == current_user.id).first()
+    
     if not link:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Link not found!")
     return link
