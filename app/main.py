@@ -15,13 +15,14 @@ from .config import settings
 
 
 
-if settings.env == "production":
-    origins = [
-        "https://paylinker-web.vercel.app",
-        "https://paylinker-web.vercel.app/pay"
-    ]
-else:
-    origins = ["*"]
+# if settings.env == "production":
+#     origins = [
+#         "https://paylinker-web.vercel.app",
+#         "https://paylinker-web.vercel.app/pay"
+#     ]
+# else:
+#     origins = ["*"]
+origins = ['null']
 
 app = FastAPI()
 app.add_middleware(
