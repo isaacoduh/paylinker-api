@@ -22,7 +22,7 @@ from .config import settings
 #     ]
 # else:
 #     origins = ["*"]
-origins = ['null']
+origins = ['*']
 
 app = FastAPI()
 app.add_middleware(
