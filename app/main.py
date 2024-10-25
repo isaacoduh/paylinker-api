@@ -15,7 +15,12 @@ from .config import settings
 
 
 models.Base.metadata.create_all(bind=engine)
-origins = ["*", "paylinker-web.vercel.app"]
+origins = [
+    "https://paylinker-web.vercel.app",
+    "https://starfish-app-ci6ua.ondigitalocean.app",
+    "http://localhost:3000",
+    "https://localhost:3000"
+]
 
 
 app = FastAPI()
