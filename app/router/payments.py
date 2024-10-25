@@ -47,8 +47,8 @@ def create_transaction(link_id: int, db: Session = Depends(get_db)):
             },
         ],
         mode="payment",
-        success_url="http://localhost:8000/success?session_id={CHECKOUT_SESSION_ID}",
-        cancel_url="http://localhost:8000/cancel",
+        success_url=f"{settings.client_url}/success?session_id={{CHECKOUT_SESSION_ID}}",
+        cancel_url=f"{settings.client_url}/cancel",
         metadata= {
             "transaction_id": transaction_id
         }

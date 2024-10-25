@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from ..config import Settings
 
 settings = Settings()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl='auth/login')
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl='api/auth/login')
 
 SECRET_KEY = settings.secret_key
 ALGORITHM = settings.algorithm

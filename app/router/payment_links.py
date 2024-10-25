@@ -9,7 +9,7 @@ from ..config import settings
 from .. import models
 from typing import List
 
-router = APIRouter(prefix="/payment-links", tags=["Payment Links"])
+router = APIRouter(prefix="/api/payment-links", tags=["Payment Links"])
 
 
 def generate_random_link(length=6):

@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from random import randrange
 from . import models
 from .database import engine, get_db
-from .router import auth, payment_links, payments
+from .router import auth, payment_links, payments, dashboard
 import os
 import stripe
 from .config import settings
@@ -29,8 +29,10 @@ templates = Jinja2Templates(directory="templates")
 stripe.api_key = settings.stripe_key
 
 app.include_router(auth.router)
+app.include_router(dashboard.router)
 app.include_router(payment_links.router)
 app.include_router(payments.router)
+
 
 
 
