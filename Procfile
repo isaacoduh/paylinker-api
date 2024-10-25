@@ -1,1 +1,2 @@
-web: uvicorn -w 2 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8080 --worker-tmp-dir /dev/shm app.main:app
+# web: uvicorn -w 2 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8080 --worker-tmp-dir /dev/shm app.main:app
+web: uvicorn app.main:app
