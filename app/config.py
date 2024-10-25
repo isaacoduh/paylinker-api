@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     client_url: str
     stripe_key: str
     stripe_webhook_secret: str
+    env: str
 
     model_config = SettingsConfigDict(env_file=".env")
 

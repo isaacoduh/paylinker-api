@@ -14,25 +14,26 @@ import stripe
 from .config import settings
 
 
-models.Base.metadata.create_all(bind=engine)
 
+if settings.env == "production":
+    origins = [
+        "https://paylinker-web.vercel.app",
+        "https://paylinker-web.vercel.app/pay"
+    ]
+else:
+    origins = ["*"]
 
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://paylinker-web.vercel.app",
-        "https://starfish-app-ci6ua.ondigitalocean.app",
-        "http://localhost:3000",
-        "https://localhost:3000"
-    ],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 templates = Jinja2Templates(directory="templates")
 stripe.api_key = settings.stripe_key
-
+models.Base.metadata.create_all(bind=engine)
 app.include_router(auth.router)
 app.include_router(dashboard.router)
 app.include_router(payment_links.router)
