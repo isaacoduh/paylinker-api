@@ -100,7 +100,14 @@ def get_link_performance(db: Session, user_id: int):
     return performance_data
 
 def get_latest_transactions(db: Session, user_id: int, limit: int = 5):
-    transactions = (db.query(models.Transaction).join(models.PaymentLink).filter(models.PaymentLink.user_id == user_id).order_by(models.Transaction.created_at.desc())).all()
+    transactions = (
+        db.query(models.Transaction)
+        .join(models.PaymentLink)
+        .filter(models.PaymentLink.user_id == user_id)
+        .order_by(models.Transaction.created_at.desc())
+        .limit(limit)
+        .all()
+    )
     return [transaction_to_dict(transaction) for transaction in transactions]
 
 @router.websocket("/ws/{user_id}")
