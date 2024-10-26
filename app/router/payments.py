@@ -10,6 +10,8 @@ import json
 from typing import List, Optional
 from datetime import datetime, timedelta
 
+from ..logger import logger
+
 # logging.basicConfig(level=logging.DEBUG)
 
 # logger = logging.getLogger(__name__)
@@ -24,6 +26,7 @@ def get_transactions(
     transaction_status: Optional[str] = Query(None, description="Filter by transaction status")
 ):
     # base query
+    logger.info("Fetching transactions with filters - Date: %s, Currency: %s, Status: %s", date, currency, transaction_status)
     query = db.query(models.Transaction)
     if date:
         try:
@@ -31,6 +34,7 @@ def get_transactions(
             next_day = parsed_date + timedelta(days=1)
             query = query.filter(models.Transaction.created_at >= parsed_date, models.Transaction.created_at < next_day)
         except ValueError:
+             logger.error("Invalid date format: %s", date)
              raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid date format")
     
     if currency:
@@ -38,13 +42,15 @@ def get_transactions(
     
     if transaction_status:
         query = query.filter(models.Transaction.status == transaction_status)
-    
-    return {"transactions": query.all()}
+    transactions = query.all()
+    logger.info("Retrieved %d transactions", len(transactions))
+    return {"transactions": transactions}
 
 @router.post("/create-transaction/{link_id}", status_code=status.HTTP_201_CREATED)
 def create_transaction(link_id: int, db: Session = Depends(get_db)):
     payment_link = db.query(models.PaymentLink).filter(models.PaymentLink.id == link_id).first()
     if not payment_link:
+        logger.warning("Payment Link ID %d not found", link_id)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment Link not found")
 
     # Create a new transaction with status 'pending'
@@ -58,6 +64,7 @@ def create_transaction(link_id: int, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_transaction)
 
+    logger.info("Created new transaction with ID %s", transaction_id)
     # Create a Stripe Checkout session
     session = stripe.checkout.Session.create(
         payment_method_types=["card"],
@@ -80,6 +87,7 @@ def create_transaction(link_id: int, db: Session = Depends(get_db)):
             "transaction_id": transaction_id
         }
     )
+    logger.info("Stripe session created for transaction ID %s", transaction_id)
     return {"transaction_id": transaction_id, "url": session.url}
 
     
@@ -105,14 +113,17 @@ def create_payment_transaction(link_id: int, payment_method: str, db: Session = 
 
 @router.get('/status/{transaction_id}', response_model=schemas.TransactionOut)
 def get_transaction_status(transaction_id: str, db: Session = Depends(get_db)):
+    """Retrieve the status of a specific transaction"""
+    logger.info("Fetching status for transaction ID %s", transaction_id)
     transaction = db.query(models.Transaction).filter(models.Transaction.transaction_id == transaction_id).first()
     if not transaction:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction with transaction ID not found!")
-    
+        logger.warning("Transaction ID %s not found", transaction_id)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
     return transaction
 
 @router.post("/webhook/")
 async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
+    """Stripe webhook endpoint to update transaction status based on Stripe events"""
     payload = await request.body()
     sig_header = request.headers.get("Stripe-Signature")
     event = None
@@ -124,12 +135,14 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
         
     except ValueError as e:
         # Invalid payload
+        logger.error("Invalid payload for Stripe webhook")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payload")
     except stripe.error.SignatureVerificationError as e:
         # Invalid signature
+        logger.error("Invalid signature for Stripe webhook")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid signature")
 
-    # print("event received is", event)
+    logger.info("Stripe event received: %s", event["type"])
     # Handle the event
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]  # Contains the checkout session object
@@ -140,8 +153,10 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
             transaction.status = "success"
             transaction.payment_method = "credit_card"
             db.commit()
+            logger.info("Transaction ID %s marked as success", transaction.transaction_id)
         else:
             # Handle the case where the transaction is not found
+            logger.warning("Transaction ID not found for session: %s", session["metadata"]["transaction_id"])
             print("Transaction not found for session:", session["metadata"]["transaction_id"])
     
     elif event["type"] == "checkout.session.async_payment_failed":
@@ -152,9 +167,10 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
         if transaction:
             transaction.status = "failure"  # Update the status to failure
             db.commit()
+            logger.info("Transaction ID %s marked as failure", transaction.transaction_id)
         else:
             # Handle the case where the transaction is not found
-            print("Transaction not found for session:", session["metadata"]["transaction_id"])
+           logger.warning("Transaction ID not found for session: %s", session["metadata"]["transaction_id"])
     
     # Other event types can be handled here
 
