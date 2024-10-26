@@ -12,6 +12,8 @@ from .router import auth, payment_links, payments, dashboard
 import os
 import stripe
 from .config import settings
+from .logger import logger
+from .log_middleware import LogMiddleware
 
 
 
@@ -32,6 +34,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(LogMiddleware)
 templates = Jinja2Templates(directory="templates")
 stripe.api_key = settings.stripe_key
 models.Base.metadata.create_all(bind=engine)
