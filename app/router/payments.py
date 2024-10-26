@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Header
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Header, Query
 from sqlalchemy.orm import Session
 import random
 from .. database import get_db
@@ -7,12 +7,38 @@ import stripe
 from .. config import settings
 import logging
 import json
+from typing import List, Optional
+from datetime import datetime
 
 # logging.basicConfig(level=logging.DEBUG)
 
 # logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/payments", tags=["Payments"])
+
+@router.get('/transactions', status_code=status.HTTP_200_OK)
+def get_transactions(
+    db: Session = Depends(get_db), 
+    date: Optional[str] = Query(None, description="Filter By Date (YYYY-MM-DD)"),
+    currency: Optional[str] = Query(None, description = 'Filter by Currency'),
+    transaction_status: Optional[str] = Query(None, description="Filter by transaction status")
+):
+    # base query
+    query = db.query(models.Transaction)
+    if date:
+        try:
+            parsed_date = datetime.strptime(date, "%Y-%m-%d").date()
+            query = query.filter(models.Transaction.created_at == parsed_date)
+        except ValueError:
+             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid date format")
+    
+    if currency:
+        query = query.join(models.Transaction.payment_link).filter(models.PaymentLink.currency == currency)
+    
+    if transaction_status:
+        query = query.filter(models.Transaction.status == transaction_status)
+    
+    return {"transactions": query.all()}
 
 @router.post("/create-transaction/{link_id}", status_code=status.HTTP_201_CREATED)
 def create_transaction(link_id: int, db: Session = Depends(get_db)):
