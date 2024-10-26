@@ -14,11 +14,13 @@ router = APIRouter(prefix='/api/dashboard', tags=["Dashboard"])
 def get_dashboard_data(db:Session = Depends(get_db), current_user: int = Depends(get_current_user)):
     total_earnings = calculate_total_earnings(db, current_user.id)
     transactions = get_transactions(db, current_user.id)
+    latest_transactions = get_latest_transactions(db, current_user.id, limit=5)
     performance = get_link_performance(db, current_user.id)
 
     return {
         "total_earnings": total_earnings,
         "transactions": transactions,
+        "latest_transactions": latest_transactions,
         "performance": performance    
     }
 
@@ -96,6 +98,10 @@ def get_link_performance(db: Session, user_id: int):
             "total_amount": sum(t.payment_link.amount for t in link.transactions if t.status == "success")
         })
     return performance_data
+
+def get_latest_transactions(db: Session, user_id: int, limit: int = 5):
+    transactions = (db.query(models.Transaction).join(models.PaymentLink).filter(models.PaymentLink.user_id == user_id).order_by(models.Transaction.created_at.desc())).all()
+    return [transaction_to_dict(transaction) for transaction in transactions]
 
 @router.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: int, db: Session = Depends(get_db)):
