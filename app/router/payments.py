@@ -8,7 +8,7 @@ from .. config import settings
 import logging
 import json
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # logging.basicConfig(level=logging.DEBUG)
 
@@ -28,7 +28,8 @@ def get_transactions(
     if date:
         try:
             parsed_date = datetime.strptime(date, "%Y-%m-%d").date()
-            query = query.filter(models.Transaction.created_at == parsed_date)
+            next_day = parsed_date + timedelta(days=1)
+            query = query.filter(models.Transaction.created_at >= parsed_date, models.Transaction.created_at < next_day)
         except ValueError:
              raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid date format")
     
