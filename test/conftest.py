@@ -64,22 +64,13 @@ def authorized_client(client, token):
     return client
 
 @pytest.fixture
-def test_payment_links(test_user, session):
-    payment_links_data = [{
-        "amount": 100,
-        "currency": "USD",
-        "description": "A simple testable link",
-        "expiration_date": "2024-12-27T05:57:56.474Z",
-        "user_id": test_user['id']
-        }]
-    def create_payment_link_model(payment_link):
-        return models.PaymentLink(**payment_link)
-
-    payment_link_map = map(create_payment_link_model, payment_links_data)
-    payment_links = list(payment_link_map)
-
-    session.add_all(payment_links)
-    session.commit()
-
-    payment_links = session.query(models.PaymentLink).all()
-    return payment_links
+def create_payment_link(client, test_user):
+    def _create_payment_link():
+        link_data = {
+            "amount": 100.0,
+            "currency": "USD",
+            "description": "Test payment link",
+            "expiration_date": "2024-12-31T23:59:59"
+        }
+        return client.post("/api/payment-links/", json=link_data)
+    return _create_payment_link

@@ -42,7 +42,18 @@ def create_payment_link(link: schemas.PaymentLinkCreate, db: Session = Depends(g
     logger.info(f"Payment link created successfully with ID: {new_link.id}")
     return new_link
 
+@router.get("/get-by-id/{id}", response_model=schemas.PaymentLinkOut)
+def get_payment_link(id: int, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user) ):
+    logger.info(f"Fetching payment link with ID: {id} for user ID {current_user.id}")
+    link = db.query(models.PaymentLink).filter(models.PaymentLink.id == id, models.PaymentLink.user_id == current_user.id).first()
+    
+    if not link:
+        logger.warning(f"Payment link with ID {id} not found for user ID {current_user.id}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Link not found!")
+    return link
+
 # GET /links/?start_date=2024-01-01&end_date=2024-10-23&currency=USD&status=active
+
 
 @router.get("/", response_model=List[schemas.PaymentLinkOut])
 def get_payment_links(db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user), currency: str = Query(None, description="Filter By Currency e.g (USD)")):
@@ -57,17 +68,6 @@ def get_payment_links(db: Session = Depends(get_db), current_user: int = Depends
     return links
 
 
-
-@router.get("/{id}", response_model=schemas.PaymentLinkOut)
-def get_payment_link(id: int, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user), ):
-    logger.info(f"Fetching payment link with ID: {id} for user ID {current_user.id}")
-    link = db.query(models.PaymentLink).filter(models.PaymentLink.id == id, models.PaymentLink.user_id == current_user.id).first()
-    
-    if not link:
-        logger.warning(f"Payment link with ID {id} not found for user ID {current_user.id}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Link not found!")
-    return link
-
 @router.put("/{id}", response_model=schemas.PaymentLinkOut)
 def update_payment_link(id: int, link_update: schemas.PaymentLinkUpdate, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
     logger.info(f"Updating payment link with ID {id} for user ID {current_user.id}")
@@ -77,7 +77,7 @@ def update_payment_link(id: int, link_update: schemas.PaymentLinkUpdate, db: Ses
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Link not found!')
     
     # update the fields
-    for field, value in link_update.dict(exclude_unset=True).items():
+    for field, value in link_update.model_dump(exclude_unset=True).items():
         setattr(link, field, value)
     
     db.commit()
