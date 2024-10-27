@@ -13,3 +13,5 @@ python-jose==3.3.0
 Jinja2==3.0.1
 stripe>=11.0.0
 gunicorn==20.1.0
+passlib[bcrypt]
+
