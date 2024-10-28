@@ -50,12 +50,13 @@ class TransactionOut(BaseModel):
     payment_link_id: int
     transaction_id: str
     status: str
-    payment_method: str
+    payment_method: Optional[str]
     created_at: datetime
     updated_at: datetime
 
     class Config:
         orm_mode = True
+        
 
 class Token(BaseModel):
     access_token: str

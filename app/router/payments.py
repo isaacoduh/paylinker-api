@@ -18,6 +18,18 @@ from ..logger import logger
 
 router = APIRouter(prefix="/api/payments", tags=["Payments"])
 
+def transaction_to_dict(transaction):
+    return {
+        "id": transaction.id,
+        "transaction_id": transaction.transaction_id,
+        "payment_method": transaction.payment_method,
+        "amount": transaction.payment_link.amount,
+        "currency": transaction.payment_link.currency,
+        "status": transaction.status,
+        "created_at": transaction.created_at.isoformat(),
+        "updated_at": transaction.updated_at.isoformat()   
+    }
+
 @router.get('/transactions', status_code=status.HTTP_200_OK)
 def get_transactions(
     db: Session = Depends(get_db), 
@@ -44,7 +56,9 @@ def get_transactions(
         query = query.filter(models.Transaction.status == transaction_status)
     transactions = query.all()
     logger.info("Retrieved %d transactions", len(transactions))
-    return {"transactions": transactions}
+    return {
+        "transactions": [transaction_to_dict(transaction) for transaction in transactions]
+    }
 
 @router.post("/create-transaction/{link_id}", status_code=status.HTTP_201_CREATED)
 def create_transaction(link_id: int, db: Session = Depends(get_db)):

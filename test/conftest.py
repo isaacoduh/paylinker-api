@@ -7,6 +7,7 @@ from app.database import get_db, Base
 from app.router.oauth2 import create_access_token
 import pytest
 from app import models
+import uuid
 
 settings = Settings()
 SQLALCHEMY_DATABASE_URL = f"postgresql://{settings.database_username}:{settings.database_password}@{settings.database_hostname}:{settings.database_port}/{settings.database_name}_test"
@@ -64,7 +65,7 @@ def authorized_client(client, token):
     return client
 
 @pytest.fixture
-def create_payment_link(client, test_user):
+def create_payment_link(authorized_client, test_user):
     def _create_payment_link():
         link_data = {
             "amount": 100.0,
@@ -72,5 +73,27 @@ def create_payment_link(client, test_user):
             "description": "Test payment link",
             "expiration_date": "2024-12-31T23:59:59"
         }
-        return client.post("/api/payment-links/", json=link_data)
+        return authorized_client.post("/api/payment-links/", json=link_data)
     return _create_payment_link
+
+# @pytest.fixture
+# def create_transaction(client):
+#     def _create_transaction(payment_link_id, status="pending"):
+#         return client.post(f'/api/transactions/create-transaction/{payment_link_id}')
+#     return _create_transaction
+
+# without hitting the stripe url
+@pytest.fixture
+def create_transaction(client):
+    def _create_transaction(payment_link_id, status = "pending"):
+        mock_transaction = {
+            "id": 1,  
+            "transaction_id": str(uuid.uuid4()),
+            "payment_link_id": payment_link_id,
+            "amount": 100.0,  
+            "currency": "USD",  
+            "status": status,
+            "created_at": "2024-01-01T00:00:00",
+        }
+        return mock_transaction
+    return _create_transaction
